@@ -68,12 +68,10 @@ def connected_components(mask, vector_field):
                     label1 = i * N + j
                     label2 = nx * N + ny
                     union(parent, rank, label1, label2)
-
     # Second pass: Flatten labels to root labels
     for i in range(N):
         for j in range(N):
             if labels[i, j] != 0:
-                labels[i, j] = find(parent, i * N + j)
-
+                labels[i, j] = find(parent, i * N + j) + 1
     return labels
 
