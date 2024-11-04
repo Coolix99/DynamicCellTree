@@ -92,7 +92,7 @@ def test_connected_components_single_component():
 
 def test_connected_components_large_single_component():
     """Test `connected_components` with a large single connected component for both connectivities."""
-    N = 100
+    N = 1000
     mask = np.ones((N, N), dtype=np.int32)
     vector_field = np.zeros((2, N, N), dtype=np.float32)
     vector_field[0, :, :] = -1
@@ -105,6 +105,7 @@ def test_connected_components_large_single_component():
     for connectivity in [4, 8]:
         labels = connected_components(mask, vector_field, connectivity=connectivity)
         labels = relabel_sequential(labels)
+        print('N label',np.max(labels))
         assert_array_equal(labels, relabel_sequential(expected_labels))
 
 def test_connected_components_disconnected():

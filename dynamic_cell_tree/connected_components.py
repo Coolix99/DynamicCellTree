@@ -57,7 +57,7 @@ def convert_to_direction_8(vx, vy):
     return direction
 
 
-@njit(parallel=True)
+@njit(parallel=False)
 def initial_labeling_pass_4(mask, vector_field, labels, parent, rank, N):
     """
     Initial parallel pass for labeling. Each row (or segment) is processed independently
@@ -81,7 +81,7 @@ def initial_labeling_pass_4(mask, vector_field, labels, parent, rank, N):
                     label2 = nx * N + ny
                     union(parent, rank, label1, label2)
 
-@njit(parallel=True)
+@njit(parallel=False)
 def initial_labeling_pass_8(mask, vector_field, labels, parent, rank, N):
     """
     Initial parallel pass for labeling. Each row (or segment) is processed independently
@@ -202,7 +202,7 @@ def convert_to_direction_18(vx, vy, vz):
 
     return direction
 
-@njit(parallel=True)
+@njit(parallel=False)
 def initial_labeling_pass_6(mask, vector_field, labels, parent, rank, N):
     """Initial pass for 3D labeling using 6-connectivity."""
     for i in prange(N):
@@ -224,7 +224,7 @@ def initial_labeling_pass_6(mask, vector_field, labels, parent, rank, N):
                         label2 = nx * N * N + ny * N + nz
                         union(parent, rank, label1, label2)
 
-@njit(parallel=True)
+@njit(parallel=False)
 def initial_labeling_pass_18(mask, vector_field, labels, parent, rank, N):
     """Initial pass for 3D labeling using 18-connectivity."""
     for i in prange(N):
