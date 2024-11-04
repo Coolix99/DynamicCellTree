@@ -24,7 +24,7 @@ def find_label_centers(labels, vector_field, distance_threshold=2, steps_check=5
     elif connectivity == 8:
         convert_to_direction = convert_to_direction_8
     else:
-        raise ValueError("Connectivity must be either 6 or 18")
+        raise ValueError("Connectivity must be either 4 or 8")
 
     for x in range(labels.shape[0]):
         for y in range(labels.shape[1]):
