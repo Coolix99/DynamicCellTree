@@ -1,6 +1,5 @@
 import numpy as np
-from numba import njit
-
+from numba import njit, prange
 
 @njit
 def find(parent, label):
@@ -30,11 +29,44 @@ def convert_to_direction(vx, vy):
     else:
         return (0, 1) if vy > 0 else (0, -1)
 
-@njit
+@njit(parallel=True)
+def initial_labeling_pass(mask, vector_field, labels, parent, rank, N):
+    """
+    Initial parallel pass for labeling. Each row (or segment) is processed independently
+    with a unique label range to avoid clashes.
+    """
+    for i in prange(N):
+        for j in range(N):
+            if mask[i, j] == 1:
+                if labels[i, j] == 0:
+                    labels[i, j] = N*N 
+
+                vx, vy = vector_field[0, i, j], vector_field[1, i, j]
+                dx, dy = convert_to_direction(vx, vy)
+                nx, ny = i + dx, j + dy
+
+                # Check if neighbor is within bounds and also in the mask
+                if 0 <= nx < N and 0 <= ny < N and mask[nx, ny] == 1:
+                    if labels[nx, ny] == 0:
+                        labels[nx, ny] = N*N
+                    label1 = i * N + j
+                    label2 = nx * N + ny
+                    union(parent, rank, label1, label2)
+
+@njit(parallel=True)
+def resolve_labels(labels, parent, N):
+    """
+    Resolves labels to ensure consistent labeling after the initial pass.
+    """
+    for i in prange(N):
+        for j in range(N):
+            if labels[i, j] != 0:
+                labels[i, j] = find(parent, i * N + j) + 1
+
+@njit(parallel=True)
 def connected_components(mask, vector_field):
     """
-    Identifies connected components in a binary mask using a two-pass
-    Union-Find algorithm with vector field connectivity.
+    Parallelized connected components using Union-Find with isolated label spaces per row.
     
     Parameters:
         mask (np.ndarray): Binary image (2D array).
@@ -47,31 +79,11 @@ def connected_components(mask, vector_field):
     labels = np.zeros((N, N), dtype=np.int32)
     parent = np.arange(N * N, dtype=np.int32)  # Flattened parent array
     rank = np.zeros(N * N, dtype=np.int32)
-    current_label = 1
-    
-    # First pass: Label and union-find setup
-    for i in range(N):
-        for j in range(N):
-            if mask[i, j] == 1:
-                if labels[i, j] == 0:
-                    labels[i, j] = current_label
-                    current_label += 1
+  
+    # Initial parallel labeling pass
+    initial_labeling_pass(mask, vector_field, labels, parent, rank, N)
 
-                vx, vy = vector_field[0, i, j], vector_field[1, i, j]
-                dx, dy = convert_to_direction(vx, vy)
-                nx, ny = i + dx, j + dy
+    # Resolve labels after initial parallel pass
+    resolve_labels(labels, parent, N)
 
-                # Check if neighbor is within bounds and also in the mask
-                if 0 <= nx < N and 0 <= ny < N and mask[nx, ny] == 1:
-                    if labels[nx, ny] == 0:
-                        labels[nx, ny] = labels[i, j]
-                    label1 = i * N + j
-                    label2 = nx * N + ny
-                    union(parent, rank, label1, label2)
-    # Second pass: Flatten labels to root labels
-    for i in range(N):
-        for j in range(N):
-            if labels[i, j] != 0:
-                labels[i, j] = find(parent, i * N + j) + 1
     return labels
-

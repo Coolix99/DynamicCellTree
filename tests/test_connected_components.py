@@ -82,6 +82,7 @@ def test_connected_components_basic():
 
     # Run the function
     labels = connected_components(mask, vector_field)
+    print(labels)
     labels = relabel_sequential(labels)
     
     # Relabel the expected output to ensure consistency in label comparison
@@ -115,6 +116,38 @@ def test_connected_components_single_component():
 
     # Expected labels: a single component labeled as 1
     expected_labels = np.ones((3, 3), dtype=np.int32)
+
+    # Run the function and relabel the output
+    labels = connected_components(mask, vector_field)
+    labels = relabel_sequential(labels)
+    
+    # Relabel the expected output to ensure consistency in label comparison
+    expected_labels = relabel_sequential(expected_labels)
+
+    # Check if the relabeled output matches the expected labels
+    assert_array_equal(labels, expected_labels)
+
+def test_connected_components_large_single_component():
+    """
+    Test `connected_components` with a large single connected component.
+    The entire mask is filled with 1s, and all cells are connected.
+    """
+    N = 500  # Define the size of the large mask
+    mask = np.ones((N, N), dtype=np.int32)  # Create an NxN mask filled with 1s
+
+    # Set up the vector field
+    vector_field = np.zeros((2, N, N), dtype=np.float32)
+    
+    # Most vectors point leftward
+    vector_field[0, :, :] = -1  # Horizontal component
+    vector_field[1, :, :] = 0   # Vertical component
+
+    # Create connecting pathways in the first row to ensure a single component
+    vector_field[0, 0, :] = 0  # Horizontal component of first row
+    vector_field[1, 0, :] = 1  # Vertical component of first row
+
+    # Expected labels: the entire grid should be labeled as a single component
+    expected_labels = np.ones((N, N), dtype=np.int32)
 
     # Run the function and relabel the output
     labels = connected_components(mask, vector_field)

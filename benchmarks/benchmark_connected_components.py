@@ -23,7 +23,7 @@ def benchmark_connected_components():
     Benchmarks the `connected_components` function across various problem sizes,
     and plots the scaling results.
     """
-    problem_sizes = [10, 20, 50, 100, 200, 300]  # Different sizes to benchmark
+    problem_sizes = [10, 20, 50, 100, 200, 300, 1000, 5000, 7000]  # Different sizes to benchmark
     times = []
 
     # Warm-up call for JIT compilation
