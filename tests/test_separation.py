@@ -94,5 +94,4 @@ def test_find_label_separation_no_overlap():
 
 # Optional main function to run tests manually
 if __name__ == "__main__":
-    test_find_label_separation_4_connectivity()
-    #pytest.main()
+    pytest.main()
