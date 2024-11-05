@@ -279,6 +279,5 @@ def connected_components_3D(mask, vector_field, connectivity=6):
         raise ValueError("Connectivity must be either 6 or 18")
 
     initial_labeling_pass(mask, vector_field, labels, parent, rank)
-    print('before resolvig',np.max(labels),np.min(labels))
     resolve_labels_3D(labels, parent, mask.shape)
     return labels
