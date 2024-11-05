@@ -58,62 +58,62 @@ def convert_to_direction_8(vx, vy):
 
 
 @njit(parallel=False)
-def initial_labeling_pass_4(mask, vector_field, labels, parent, rank, N):
+def initial_labeling_pass_4(mask, vector_field, labels, parent, rank):
     """
     Initial parallel pass for labeling. Each row (or segment) is processed independently
     with a unique label range to avoid clashes.
     """
-    for i in prange(N):
-        for j in range(N):
+    for i in prange(mask.shape[0]):
+        for j in range(mask.shape[1]):
             if mask[i, j] == 1:
                 if labels[i, j] == 0:
-                    labels[i, j] = N*N 
+                    labels[i, j] = mask.shape[0]*mask.shape[1]
 
                 vx, vy = vector_field[0, i, j], vector_field[1, i, j]
                 dx, dy = convert_to_direction_4(vx, vy)
                 nx, ny = i + dx, j + dy
 
                 # Check if neighbor is within bounds and also in the mask
-                if 0 <= nx < N and 0 <= ny < N and mask[nx, ny] == 1:
+                if 0 <= nx < mask.shape[0] and 0 <= ny < mask.shape[1] and mask[nx, ny] == 1:
                     if labels[nx, ny] == 0:
-                        labels[nx, ny] = N*N
-                    label1 = i * N + j
-                    label2 = nx * N + ny
+                        labels[nx, ny] = mask.shape[0]*mask.shape[1]
+                    label1 = i * mask.shape[1] + j
+                    label2 = nx * mask.shape[1] + ny
                     union(parent, rank, label1, label2)
 
 @njit(parallel=False)
-def initial_labeling_pass_8(mask, vector_field, labels, parent, rank, N):
+def initial_labeling_pass_8(mask, vector_field, labels, parent, rank):
     """
     Initial parallel pass for labeling. Each row (or segment) is processed independently
     with a unique label range to avoid clashes.
     """
-    for i in prange(N):
-        for j in range(N):
+    for i in prange(mask.shape[0]):
+        for j in range(mask.shape[1]):
             if mask[i, j] == 1:
                 if labels[i, j] == 0:
-                    labels[i, j] = N*N 
+                    labels[i, j] = mask.shape[0]*mask.shape[1]
 
                 vx, vy = vector_field[0, i, j], vector_field[1, i, j]
                 dx, dy = convert_to_direction_8(vx, vy)
                 nx, ny = i + dx, j + dy
 
                 # Check if neighbor is within bounds and also in the mask
-                if 0 <= nx < N and 0 <= ny < N and mask[nx, ny] == 1:
+                if 0 <= nx < mask.shape[0] and 0 <= ny < mask.shape[1] and mask[nx, ny] == 1:
                     if labels[nx, ny] == 0:
-                        labels[nx, ny] = N*N
-                    label1 = i * N + j
-                    label2 = nx * N + ny
+                        labels[nx, ny] = mask.shape[0]*mask.shape[1]
+                    label1 = i * mask.shape[1] + j
+                    label2 = nx * mask.shape[1] + ny
                     union(parent, rank, label1, label2)
 
 @njit(parallel=True)
-def resolve_labels(labels, parent, N):
+def resolve_labels(labels, parent,shape):
     """
     Resolves labels to ensure consistent labeling after the initial pass.
     """
-    for i in prange(N):
-        for j in range(N):
+    for i in prange(shape[0]):
+        for j in range(shape[1]):
             if labels[i, j] != 0:
-                labels[i, j] = find(parent, i * N + j) + 1
+                labels[i, j] = find(parent, i * shape[1] + j) + 1
 
 
 def connected_components(mask, vector_field, connectivity=4):
@@ -128,10 +128,10 @@ def connected_components(mask, vector_field, connectivity=4):
     Returns:
         labels (np.ndarray): Labeled image where each component has a unique label.
     """
-    N = mask.shape[0]
-    labels = np.zeros((N, N), dtype=np.int32)
-    parent = np.arange(N * N, dtype=np.int32)  # Flattened parent array
-    rank = np.zeros(N * N, dtype=np.int32)
+    
+    labels = np.zeros((mask.shape[0], mask.shape[1]), dtype=np.int32)
+    parent = np.arange(mask.shape[0] * mask.shape[1], dtype=np.int32)
+    rank = np.zeros(mask.shape[0] * mask.shape[1], dtype=np.int32)
   
     if connectivity == 4:
         initial_labeling_pass = initial_labeling_pass_4
@@ -139,10 +139,10 @@ def connected_components(mask, vector_field, connectivity=4):
         initial_labeling_pass = initial_labeling_pass_8
     else:
         raise ValueError("Connectivity must be either 4 or 8")
-    initial_labeling_pass(mask, vector_field, labels, parent, rank, N)
+    initial_labeling_pass(mask, vector_field, labels, parent, rank)
 
     # Resolve labels after initial parallel pass
-    resolve_labels(labels, parent, N)
+    resolve_labels(labels, parent, mask.shape)
 
     return labels
 
@@ -203,57 +203,57 @@ def convert_to_direction_18(vx, vy, vz):
     return direction
 
 @njit(parallel=False)
-def initial_labeling_pass_6(mask, vector_field, labels, parent, rank, N):
+def initial_labeling_pass_6(mask, vector_field, labels, parent, rank):
     """Initial pass for 3D labeling using 6-connectivity."""
-    for i in prange(N):
-        for j in range(N):
-            for k in range(N):
+    for i in prange(mask.shape[0]):
+        for j in range(mask.shape[1]):
+            for k in range(mask.shape[2]):
                 if mask[i, j, k] == 1:
                     if labels[i, j, k] == 0:
-                        labels[i, j, k] = N * N * N  # Initial label assignment
+                        labels[i, j, k] = mask.shape[0] * mask.shape[1] * mask.shape[2]  # Initial label assignment
 
                     vx, vy, vz = vector_field[0, i, j, k], vector_field[1, i, j, k], vector_field[2, i, j, k]
                     dx, dy, dz = convert_to_direction_6(vx, vy, vz)
                     nx, ny, nz = i + dx, j + dy, k + dz
 
                     # Check if neighbor is within bounds and also in the mask
-                    if 0 <= nx < N and 0 <= ny < N and 0 <= nz < N and mask[nx, ny, nz] == 1:
+                    if 0 <= nx < mask.shape[0] and 0 <= ny < mask.shape[1] and 0 <= nz < mask.shape[2] and mask[nx, ny, nz] == 1:
                         if labels[nx, ny, nz] == 0:
-                            labels[nx, ny, nz] = N * N * N
-                        label1 = i * N * N + j * N + k
-                        label2 = nx * N * N + ny * N + nz
+                            labels[nx, ny, nz] = mask.shape[0] * mask.shape[1] * mask.shape[2]
+                        label1 = i * mask.shape[2] * mask.shape[1] + j * mask.shape[2] + k
+                        label2 = nx * mask.shape[2] * mask.shape[1] + ny * mask.shape[2] + nz
                         union(parent, rank, label1, label2)
 
 @njit(parallel=False)
-def initial_labeling_pass_18(mask, vector_field, labels, parent, rank, N):
+def initial_labeling_pass_18(mask, vector_field, labels, parent, rank):
     """Initial pass for 3D labeling using 18-connectivity."""
-    for i in prange(N):
-        for j in range(N):
-            for k in range(N):
+    for i in prange(mask.shape[0]):
+        for j in range(mask.shape[1]):
+            for k in range(mask.shape[2]):
                 if mask[i, j, k] == 1:
                     if labels[i, j, k] == 0:
-                        labels[i, j, k] = N * N * N  # Initial label assignment
+                        labels[i, j, k] = mask.shape[0] * mask.shape[1] * mask.shape[2]  # Initial label assignment
 
                     vx, vy, vz = vector_field[0, i, j, k], vector_field[1, i, j, k], vector_field[2, i, j, k]
                     dx, dy, dz = convert_to_direction_18(vx, vy, vz)
                     nx, ny, nz = i + dx, j + dy, k + dz
 
                     # Check if neighbor is within bounds and also in the mask
-                    if 0 <= nx < N and 0 <= ny < N and 0 <= nz < N and mask[nx, ny, nz] == 1:
+                    if 0 <= nx < mask.shape[0] and 0 <= ny < mask.shape[1] and 0 <= nz < mask.shape[2] and mask[nx, ny, nz] == 1:
                         if labels[nx, ny, nz] == 0:
-                            labels[nx, ny, nz] = N * N * N
-                        label1 = i * N * N + j * N + k
-                        label2 = nx * N * N + ny * N + nz
+                            labels[nx, ny, nz] = mask.shape[0] * mask.shape[1] * mask.shape[2]
+                        label1 = i * mask.shape[2] * mask.shape[1] + j * mask.shape[2] + k
+                        label2 = nx * mask.shape[2] * mask.shape[1] + ny * mask.shape[2] + nz
                         union(parent, rank, label1, label2)
 
 @njit(parallel=True)
-def resolve_labels_3D(labels, parent, N):
+def resolve_labels_3D(labels, parent,shape):
     """Resolve labels in 3D after the initial parallel pass."""
-    for i in prange(N):
-        for j in range(N):
-            for k in range(N):
+    for i in prange(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):
                 if labels[i, j, k] != 0:
-                    labels[i, j, k] = find(parent, i * N * N + j * N + k) + 1
+                    labels[i, j, k] = find(parent, i * shape[1] * shape[2] + j * shape[2] + k) + 1
 
 def connected_components_3D(mask, vector_field, connectivity=6):
     """
@@ -261,16 +261,15 @@ def connected_components_3D(mask, vector_field, connectivity=6):
 
     Parameters:
         mask (np.ndarray): Binary image (3D array).
-        vector_field (np.ndarray): 3D array (3, N, N, N) for vector directions.
+        vector_field (np.ndarray): 3D array (3, N1, N2, N3) for vector directions.
         connectivity (int): Connectivity type, either 6 or 18.
         
     Returns:
         labels (np.ndarray): Labeled 3D image where each component has a unique label.
     """
-    N = mask.shape[0]
-    labels = np.zeros((N, N, N), dtype=np.int32)
-    parent = np.arange(N * N * N, dtype=np.int32)
-    rank = np.zeros(N * N * N, dtype=np.int32)
+    labels = np.zeros((mask.shape[0], mask.shape[1], mask.shape[2]), dtype=np.int32)
+    parent = np.arange(mask.shape[0] * mask.shape[1] * mask.shape[2], dtype=np.int32)
+    rank = np.zeros(mask.shape[0] * mask.shape[1] * mask.shape[2], dtype=np.int32)
 
     if connectivity == 6:
         initial_labeling_pass = initial_labeling_pass_6
@@ -279,6 +278,7 @@ def connected_components_3D(mask, vector_field, connectivity=6):
     else:
         raise ValueError("Connectivity must be either 6 or 18")
 
-    initial_labeling_pass(mask, vector_field, labels, parent, rank, N)
-    resolve_labels_3D(labels, parent, N)
+    initial_labeling_pass(mask, vector_field, labels, parent, rank)
+    print('before resolvig',np.max(labels),np.min(labels))
+    resolve_labels_3D(labels, parent, mask.shape)
     return labels

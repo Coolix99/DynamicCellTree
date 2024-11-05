@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import os
 import json
 import h5py
+import napari
+import pyclesperanto_prototype as cle
 
 from dynamic_cell_tree.connected_components import connected_components_3D
 from dynamic_cell_tree.center_finding import find_label_centers_3D
@@ -53,6 +55,8 @@ def getImage(file):
             
             return image
 
+
+
 def generate_example_data_3D():
 
     apply_folder='20220610_mAG-zGem_H2a-mcherry_78hpf_LM_A3_analyzed_nuclei'
@@ -69,31 +73,38 @@ def generate_example_data_3D():
     flow_file=os.path.join(apply_dir_path,MetaData_apply['pred_flows file'])
     mask_file=os.path.join(apply_dir_path,MetaData_apply['segmentation file'])
 
-    flow=load_compressed_array(flow_file)[:,300:400,200:800,200:800]
-    mask=load_compressed_array(mask_file)[300:400,200:800,200:800]
+    flow=load_compressed_array(flow_file)
+    mask=load_compressed_array(mask_file)
 
     MetaData_nuclei=get_JSON(nuclei_dir_path)["nuclei_image_MetaData"]
     nuclei_file=os.path.join(nuclei_dir_path,MetaData_nuclei['nuclei image file name'])
-    nuclei=getImage(nuclei_file)[300:400,200:800,200:800]
-    todo: nuclei scalen
-    return mask,flow,nuclei
+    nuclei=getImage(nuclei_file)
 
-import napari
-def show_results_napari(mask, vector_field,nuclei,labels=None):
-    """
-    Displays the binary mask, vector field, and connected components using napari.
-    """
+    factor = tuple(m / n for m, n in zip(mask.shape, nuclei.shape))
+    nuclei=cle.resample(nuclei, factor_x=factor[2], factor_y=factor[1], factor_z=factor[0])
 
-    # Prepare vector data for napari Vectors layer
-    X, Y, Z = np.meshgrid(np.arange(mask.shape[0]), np.arange(mask.shape[1]),np.arange(mask.shape[2]))
-    start_points = np.vstack([Z.ravel(),Y.ravel(), X.ravel()]).T  # (N^2, 2) array of starting points
-    U = vector_field[2, :, :, :].ravel()  # X-component
-    V = vector_field[1, :, :,:].ravel()  # Y-component (negative for display alignment)
-    W = vector_field[0, :, :,:].ravel()  # Y-component (negative for display alignment)
-    
-    # Compute end points by adding the direction to the start point
-    direction = np.vstack([V, U, W]).T
-    vector_data = np.stack([start_points, direction], axis=1)  # Shape (N^2, 2, 2)
+    return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
+
+def show_results_napari(mask, vector_field, nuclei, labels=None):
+    """
+    Displays the binary mask, vector field, and connected components in 3D using napari.
+    """
+    # Prepare the grid for starting points in 3D
+    X, Y, Z = np.meshgrid(
+        np.arange(mask.shape[0]), 
+        np.arange(mask.shape[1]), 
+        np.arange(mask.shape[2]), 
+        indexing='ij'
+    )
+    start_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T  # (N, 3) array of starting points
+
+    # Unpack vector components for 3D
+    U = vector_field[0].ravel()  # X-component
+    V = vector_field[1].ravel()  # Y-component
+    W = vector_field[2].ravel()  # Z-component
+
+    # Compute the end points by adding the vector directions to start points
+    vector_data = np.stack([start_points, np.vstack([U, V, W]).T], axis=1)  # Shape (N, 2, 3)
 
     # Open napari viewer
     viewer = napari.Viewer()
@@ -105,14 +116,14 @@ def show_results_napari(mask, vector_field,nuclei,labels=None):
     viewer.add_vectors(vector_data, edge_color="blue", name="Vector Field")
 
     # Add connected components as a labels layer
-    if not labels is None:
+    if labels is not None:
         viewer.add_labels(labels, name="Connected Components")
 
-    viewer.add_image(nuclei,name="nuclei")
+    # Add nuclei layer
+    viewer.add_image(nuclei, name="Nuclei")
 
     # Start napari event loop
     napari.run()
-
 
 def main():
 
@@ -120,10 +131,12 @@ def main():
     print(mask.shape)
     print(vector_field.shape)
     print(nuclei.shape)
-    show_results_napari(mask,vector_field,nuclei)
-    return
+    #show_results_napari(mask,vector_field,nuclei)
+    
     # Identify connected components using the vector field and CCL
     labels = connected_components_3D(mask, vector_field,connectivity=18)
+    print(labels.shape)
+    print(np.max(labels))
     print('cc3d',np.unique(labels))
     labels=relabel_sequentially_3D(labels)
     print('relaybel',np.unique(labels))
@@ -144,5 +157,14 @@ def main():
 
 
 if __name__ == "__main__":
+    # Nx=20
+    # Ny=10
+    # Nz=30
+    # mask = np.random.rand(Nx, Ny, Nz) > 0.5
+    # vector_field = np.random.rand(3, Nx, Ny, Nz) - 0.5  # Random 3D vectors
+    # vector_field[2,:,:,:]=1
+    # nuclei = np.random.rand(Nx, Ny, Nz)
+    # labels = np.random.randint(0, 4, size=(Nx, Ny, Nz))
+    # show_results_napari(mask, vector_field, nuclei, labels)
     main()
 
