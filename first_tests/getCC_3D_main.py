@@ -11,7 +11,7 @@ from dynamic_cell_tree.center_finding import find_label_centers_3D
 from dynamic_cell_tree.separation import find_label_separation
 from dynamic_cell_tree.build_tree import build_trees_from_splits
 from dynamic_cell_tree.label_operations import relabel_sequentially_3D
-from dynamic_cell_tree.merge_near_centers import merge_close_labels
+from dynamic_cell_tree.merge_near_centers import merge_close_labels_3D
 
 def load_compressed_array(filename):
     # Load the mask, non-zero elements, and original shape from the file
@@ -125,34 +125,64 @@ def show_results_napari(mask, vector_field, nuclei, labels=None):
     # Start napari event loop
     napari.run()
 
+import time
+
 def main():
-
-    mask, vector_field,nuclei = generate_example_data_3D()
-    print(mask.shape)
-    print(vector_field.shape)
-    print(nuclei.shape)
-    #show_results_napari(mask,vector_field,nuclei)
+    # Generate example data
+    start_time = time.time()
+    mask, vector_field, nuclei = generate_example_data_3D()
+    print(f"Data generation took {time.time() - start_time:.2f} seconds.")
     
-    # Identify connected components using the vector field and CCL
-    labels = connected_components_3D(mask, vector_field,connectivity=18)
-    print(labels.shape)
-    print(np.max(labels))
-    print('cc3d',np.unique(labels))
-    labels=relabel_sequentially_3D(labels)
-    print('relaybel',np.unique(labels))
+    print("Mask shape:", mask.shape)
+    print("Vector field shape:", vector_field.shape)
+    print("Nuclei shape:", nuclei.shape)
 
-    centers=find_label_centers_3D(labels, vector_field,connectivity=18)
-    print(centers)
-
-    labels=merge_close_labels(labels, centers, merge_distance=2)
-
-    splits=find_label_separation(labels, vector_field, cutoff=20,connectivity=18)
-    print(splits)
-    print(build_trees_from_splits(splits))
+    # Identify connected components
+    start_time = time.time()
+    labels = connected_components_3D(mask, vector_field, connectivity=18)
+    print(f"Connected components labeling took {time.time() - start_time:.2f} seconds.")
     
-    show_results_napari(mask,vector_field,nuclei,labels)
-    # # Show results with components optionally displayed
-    # show_results(mask, vector_field, labels, plot_labels=True)
+    print("Labels shape:", labels.shape)
+    print("Max label:", np.max(labels))
+    print("Unique labels in connected components:", np.unique(labels))
+
+    # Relabel sequentially
+    start_time = time.time()
+    labels = relabel_sequentially_3D(labels)
+    print(f"Relabeling sequentially took {time.time() - start_time:.2f} seconds.")
+    
+    print("Unique labels after relabeling:", np.unique(labels))
+
+    # Find label centers
+    start_time = time.time()
+    centers = find_label_centers_3D(labels, vector_field, connectivity=18)
+    print(f"Finding label centers took {time.time() - start_time:.2f} seconds.")
+    print("Centers found.")
+
+    # Merge close labels
+    start_time = time.time()
+    labels = merge_close_labels_3D(labels, centers, merge_distance=2)
+    print(f"Merging close labels took {time.time() - start_time:.2f} seconds.")
+    
+    # Display results with napari
+    show_results_napari(mask, vector_field, nuclei, labels)
+
+    # Find label separation
+    start_time = time.time()
+    splits = find_label_separation(labels, vector_field, cutoff=20, connectivity=18)
+    print(f"Finding label separation took {time.time() - start_time:.2f} seconds.")
+    
+    print("Splits:", splits)
+
+    # Build trees from splits
+    start_time = time.time()
+    tree = build_trees_from_splits(splits)
+    print(f"Building trees from splits took {time.time() - start_time:.2f} seconds.")
+    
+    print("Tree structure:", tree)
+
+    # Display final results
+    show_results_napari(mask, vector_field, nuclei, labels)
 
 
 
