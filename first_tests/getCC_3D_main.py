@@ -85,9 +85,16 @@ def generate_example_data_3D():
 
     return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
 
-def show_results_napari(mask, vector_field, nuclei, labels=None):
+def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
     """
-    Displays the binary mask, vector field, and connected components in 3D using napari.
+    Displays the binary mask, vector field, connected components, and label centers in 3D using napari.
+    
+    Parameters:
+        mask (np.ndarray): The binary mask to be displayed.
+        vector_field (np.ndarray): The vector field to be displayed.
+        nuclei (np.ndarray): Nuclei image to be displayed.
+        labels (np.ndarray, optional): Labeled connected components to display.
+        centers (dict, optional): Dictionary of label centers (label as key, (x, y, z) coordinates as value).
     """
     # Prepare the grid for starting points in 3D
     X, Y, Z = np.meshgrid(
@@ -121,6 +128,11 @@ def show_results_napari(mask, vector_field, nuclei, labels=None):
 
     # Add nuclei layer
     viewer.add_image(nuclei, name="Nuclei")
+
+    # Add label centers as a points layer if centers are provided
+    if centers is not None:
+        points = np.array(list(centers.values()))  # Extract the center coordinates
+        viewer.add_points(points, name="Label Centers", size=1, face_color="red", symbol="o")
 
     # Start napari event loop
     napari.run()
@@ -161,11 +173,11 @@ def main():
 
     # Merge close labels
     start_time = time.time()
-    labels = merge_close_labels_3D(labels, centers, merge_distance=2)
+    labels = merge_close_labels_3D(labels, centers, merge_distance=4)
     print(f"Merging close labels took {time.time() - start_time:.2f} seconds.")
     
     # Display results with napari
-    show_results_napari(mask, vector_field, nuclei, labels)
+    show_results_napari(mask, vector_field, nuclei, labels,centers)
 
     # Find label separation
     start_time = time.time()
