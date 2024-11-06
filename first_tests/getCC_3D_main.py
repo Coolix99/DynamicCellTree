@@ -8,7 +8,7 @@ import pyclesperanto_prototype as cle
 
 from dynamic_cell_tree.connected_components import connected_components_3D
 from dynamic_cell_tree.center_finding import find_label_centers_3D
-from dynamic_cell_tree.separation import find_label_separation
+from dynamic_cell_tree.separation import find_label_separation_3D
 from dynamic_cell_tree.build_tree import build_trees_from_splits
 from dynamic_cell_tree.label_operations import relabel_sequentially_3D
 from dynamic_cell_tree.merge_near_centers import merge_close_labels_3D
@@ -177,11 +177,11 @@ def main():
     print(f"Merging close labels took {time.time() - start_time:.2f} seconds.")
     
     # Display results with napari
-    show_results_napari(mask, vector_field, nuclei, labels,centers)
+    #show_results_napari(mask, vector_field, nuclei, labels,centers)
 
     # Find label separation
     start_time = time.time()
-    splits = find_label_separation(labels, vector_field, cutoff=20, connectivity=18)
+    splits = find_label_separation_3D(labels, vector_field, cutoff=20, connectivity=6) #change back if implemented
     print(f"Finding label separation took {time.time() - start_time:.2f} seconds.")
     
     print("Splits:", splits)

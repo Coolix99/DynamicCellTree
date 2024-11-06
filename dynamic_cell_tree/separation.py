@@ -102,113 +102,157 @@ def find_label_separation(labels, vector_field, cutoff=30, connectivity=4):
 
     return separation_times
 
-@njit
-def get_neighbors_3D(x, y, z, connectivity):
-    """Get neighbors in 3D based on connectivity (6, 18, or 26)."""
-    if connectivity == 6:
-        return [
-            (x + 1, y, z), (x - 1, y, z), (x, y + 1, z), 
-            (x, y - 1, z), (x, y, z + 1), (x, y, z - 1)
-        ]
-    elif connectivity == 18:
-        neighbors = [
-            (x + 1, y, z), (x - 1, y, z), (x, y + 1, z), 
-            (x, y - 1, z), (x, y, z + 1), (x, y, z - 1),
-            (x + 1, y + 1, z), (x + 1, y - 1, z), (x - 1, y + 1, z),
-            (x - 1, y - 1, z), (x + 1, y, z + 1), (x - 1, y, z + 1),
-            (x, y + 1, z + 1), (x, y - 1, z + 1), (x + 1, y, z - 1),
-            (x - 1, y, z - 1), (x, y + 1, z - 1), (x, y - 1, z - 1)
-        ]
-        return neighbors
-    elif connectivity == 26:
-        neighbors = []
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
-                for dz in [-1, 0, 1]:
-                    if dx != 0 or dy != 0 or dz != 0:
-                        neighbors.append((x + dx, y + dy, z + dz))
-        return neighbors
+# @njit
+# def get_neighbors_3D(x, y, z, connectivity):
+#     """Get neighbors in 3D based on connectivity (6, 18, or 26)."""
+#     if connectivity == 6:
+#         return [
+#             (x + 1, y, z), (x - 1, y, z), (x, y + 1, z), 
+#             (x, y - 1, z), (x, y, z + 1), (x, y, z - 1)
+#         ]
+#     elif connectivity == 18:
+#         neighbors = [
+#             (x + 1, y, z), (x - 1, y, z), (x, y + 1, z), 
+#             (x, y - 1, z), (x, y, z + 1), (x, y, z - 1),
+#             (x + 1, y + 1, z), (x + 1, y - 1, z), (x - 1, y + 1, z),
+#             (x - 1, y - 1, z), (x + 1, y, z + 1), (x - 1, y, z + 1),
+#             (x, y + 1, z + 1), (x, y - 1, z + 1), (x + 1, y, z - 1),
+#             (x - 1, y, z - 1), (x, y + 1, z - 1), (x, y - 1, z - 1)
+#         ]
+#         return neighbors
+#     elif connectivity == 26:
+#         neighbors = []
+#         for dx in [-1, 0, 1]:
+#             for dy in [-1, 0, 1]:
+#                 for dz in [-1, 0, 1]:
+#                     if dx != 0 or dy != 0 or dz != 0:
+#                         neighbors.append((x + dx, y + dy, z + dz))
+#         return neighbors
     
-@njit
-def compute_progenitors_3D(label, target_x, target_y, target_z, vector_field, labels, cutoff, connectivity):
-    """
-    Perform a DFS to find all progenitor voxels pointing towards the target voxel in 3D.
-    """
-    # Select the direction conversion function based on connectivity
-    if connectivity == 6:
-        convert_to_direction = convert_to_direction_6
-    elif connectivity == 18:
-        convert_to_direction = convert_to_direction_18
-    else:
-        raise ValueError("Unsupported connectivity: Only 6, 18, or 26 are supported in 3D.")
+# @njit
+# def compute_progenitors_3D(label, target_x, target_y, target_z, vector_field, labels, cutoff, connectivity):
+#     """
+#     Perform a DFS to find all progenitor voxels pointing towards the target voxel in 3D.
+#     """
+#     # Select the direction conversion function based on connectivity
+#     if connectivity == 6:
+#         convert_to_direction = convert_to_direction_6
+#     elif connectivity == 18:
+#         convert_to_direction = convert_to_direction_18
+#     else:
+#         raise ValueError("Unsupported connectivity: Only 6, 18, or 26 are supported in 3D.")
 
-    stack = [(target_x, target_y, target_z)]
-    visited = np.zeros_like(labels, dtype=np.bool_)
-    depth = 0
+#     stack = [(target_x, target_y, target_z)]
+#     visited = np.zeros_like(labels, dtype=np.bool_)
+#     depth = 0
 
-    while stack and depth < cutoff:
-        current_size = len(stack)
-        for _ in range(current_size):
-            current_x, current_y, current_z = stack.pop()
-            if visited[current_x, current_y, current_z]:
-                continue
-            visited[current_x, current_y, current_z] = True
+#     while stack and depth < cutoff:
+#         current_size = len(stack)
+#         for _ in range(current_size):
+#             current_x, current_y, current_z = stack.pop()
+#             if visited[current_x, current_y, current_z]:
+#                 continue
+#             visited[current_x, current_y, current_z] = True
 
-            # Retrieve neighbors based on connectivity
-            neighbors = get_neighbors_3D(current_x, current_y, current_z, connectivity)
-            for nx, ny, nz in neighbors:
-                if (0 <= nx < labels.shape[0] and 0 <= ny < labels.shape[1] and 0 <= nz < labels.shape[2] and labels[nx, ny, nz] == label):
-                    vx, vy, vz = vector_field[0, nx, ny, nz], vector_field[1, nx, ny, nz], vector_field[2, nx, ny, nz]
-                    dx, dy, dz = convert_to_direction(vx, vy, vz)
-                    if nx + dx == current_x and ny + dy == current_y and nz + dz == current_z:
-                        stack.append((nx, ny, nz))
-        depth += 1
+#             # Retrieve neighbors based on connectivity
+#             neighbors = get_neighbors_3D(current_x, current_y, current_z, connectivity)
+#             for nx, ny, nz in neighbors:
+#                 if (0 <= nx < labels.shape[0] and 0 <= ny < labels.shape[1] and 0 <= nz < labels.shape[2] and labels[nx, ny, nz] == label):
+#                     vx, vy, vz = vector_field[0, nx, ny, nz], vector_field[1, nx, ny, nz], vector_field[2, nx, ny, nz]
+#                     dx, dy, dz = convert_to_direction(vx, vy, vz)
+#                     if nx + dx == current_x and ny + dy == current_y and nz + dz == current_z:
+#                         stack.append((nx, ny, nz))
+#         depth += 1
 
-    return depth
+#     return depth
 
-#@njit(parallel=True)
-def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
-    """
-    Computes a hierarchy of separation times between neighboring labels in 3D.
-    """
-    # Select the direction conversion function based on connectivity
-    if connectivity == 6:
-        convert_to_direction = convert_to_direction_6
-    elif connectivity == 18:
-        convert_to_direction = convert_to_direction_18
-    else:
-        raise ValueError("Unsupported connectivity for 3D.")
+# #@njit(parallel=True)
+# def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
+#     """
+#     Computes a hierarchy of separation times between neighboring labels in 3D.
+#     """
+#     # Select the direction conversion function based on connectivity
+#     if connectivity == 6:
+#         convert_to_direction = convert_to_direction_6
+#     elif connectivity == 18:
+#         convert_to_direction = convert_to_direction_18
+#     else:
+#         raise ValueError("Unsupported connectivity for 3D.")
 
-    separation_times = {}
+#     separation_times = {}
 
-    for x in prange(labels.shape[0]):
-        for y in range(labels.shape[1]):
-            for z in range(labels.shape[2]):
-                current_label = labels[x, y, z]
-                if current_label == 0:
-                    continue
-                # Iterate over neighbors based on connectivity
-                neighbors = get_neighbors_3D(x, y, z, connectivity)
-                for nx, ny, nz in neighbors:
-                    if 0 <= nx < labels.shape[0] and 0 <= ny < labels.shape[1] and 0 <= nz < labels.shape[2]:
-                        neighbor_label = labels[nx, ny, nz]
-                        if neighbor_label != 0 and neighbor_label != current_label:
-                            dx1, dy1, dz1 = convert_to_direction(vector_field[0, x, y, z], vector_field[1, x, y, z], vector_field[2, x, y, z])
-                            dx2, dy2, dz2 = convert_to_direction(vector_field[0, nx, ny, nz], vector_field[1, nx, ny, nz], vector_field[2, nx, ny, nz])
-                            if dx1 == dx2 and dy1 == dy2 and dz1 == dz2:
-                                continue
+#     for x in prange(labels.shape[0]):
+#         for y in range(labels.shape[1]):
+#             print(x,y)
+#             for z in range(labels.shape[2]):
+#                 current_label = labels[x, y, z]
+#                 if current_label == 0:
+#                     continue
+#                 # Iterate over neighbors based on connectivity
+#                 neighbors = get_neighbors_3D(x, y, z, connectivity)
+#                 for nx, ny, nz in neighbors:
+#                     if 0 <= nx < labels.shape[0] and 0 <= ny < labels.shape[1] and 0 <= nz < labels.shape[2]:
+#                         neighbor_label = labels[nx, ny, nz]
+#                         if neighbor_label != 0 and neighbor_label != current_label:
+#                             dx1, dy1, dz1 = convert_to_direction(vector_field[0, x, y, z], vector_field[1, x, y, z], vector_field[2, x, y, z])
+#                             dx2, dy2, dz2 = convert_to_direction(vector_field[0, nx, ny, nz], vector_field[1, nx, ny, nz], vector_field[2, nx, ny, nz])
+#                             if dx1 == dx2 and dy1 == dy2 and dz1 == dz2:
+#                                 continue
             
-                            # Compute progenitor chain lengths for both labels
-                            s1 = compute_progenitors_3D(current_label, x, y, z, vector_field, labels, cutoff, connectivity)
-                            s2 = compute_progenitors_3D(neighbor_label, nx, ny, nz, vector_field, labels, cutoff, connectivity)
+#                             # Compute progenitor chain lengths for both labels
+#                             s1 = compute_progenitors_3D(current_label, x, y, z, vector_field, labels, cutoff, connectivity)
+#                             s2 = compute_progenitors_3D(neighbor_label, nx, ny, nz, vector_field, labels, cutoff, connectivity)
                             
-                            separation_time = min(s1, s2)
-                            label_pair = (min(current_label, neighbor_label), max(current_label, neighbor_label))
+#                             separation_time = min(s1, s2)
+#                             label_pair = (min(current_label, neighbor_label), max(current_label, neighbor_label))
                             
-                            # Update the maximum separation time for the label pair
-                            if label_pair in separation_times:
-                                separation_times[label_pair] = max(separation_times[label_pair], separation_time)
-                            else:
-                                separation_times[label_pair] = separation_time
+#                             # Update the maximum separation time for the label pair
+#                             if label_pair in separation_times:
+#                                 separation_times[label_pair] = max(separation_times[label_pair], separation_time)
+#                             else:
+#                                 separation_times[label_pair] = separation_time
 
-    return separation_times
+#     return separation_times
+
+
+import ctypes
+import numpy as np
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+lib_path = os.path.join(current_dir, 'libseparation.so')
+lib = ctypes.CDLL(lib_path)
+
+# Define argument and return types
+lib.find_label_separation_3D.argtypes = [
+    ctypes.POINTER(ctypes.c_int),  # labels (flat array)
+    ctypes.POINTER(ctypes.c_int),  # vector_field (flat array)
+    ctypes.c_int, ctypes.c_int, ctypes.c_int,  # x_dim, y_dim, z_dim
+    ctypes.c_int, ctypes.c_int,               # cutoff, connectivity
+    ctypes.POINTER(ctypes.c_int)              # separation_times (flat array)
+]
+
+def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
+    x_dim, y_dim, z_dim = labels.shape
+
+    # Flatten arrays and create ctypes pointers
+    flat_labels = labels.ravel().astype(np.int32)
+    flat_vector_field = vector_field.ravel().astype(np.int32)
+    separation_times = np.zeros(1000 * 1000, dtype=np.int32)  # Pre-allocate for simplicity
+
+    # Call the C function
+    lib.find_label_separation_3D(
+        flat_labels.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        flat_vector_field.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        x_dim, y_dim, z_dim,
+        cutoff, connectivity,
+        separation_times.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+    )
+
+    separation_dict = {}
+    for i in range(1000):
+        for j in range(i + 1, 1000):  # Only need upper triangular part for unique pairs
+            if separation_times[i * 1000 + j] > 0:
+                separation_dict[(i, j)] = separation_times[i * 1000 + j]
+
+    return separation_dict

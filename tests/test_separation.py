@@ -119,7 +119,7 @@ def test_find_label_separation_3D_6_connectivity():
 
     # Run the function
     separation_times = find_label_separation_3D(labels, vector_field, cutoff=10, connectivity=6)
-
+    print(separation_times)
     # Check if the separation times match expected values
     assert separation_times == expected_separation, f"Expected {expected_separation}, but got {separation_times}"
 
@@ -186,4 +186,5 @@ def test_find_label_separation_3D_no_overlap():
 
 # Optional main function to run tests manually
 if __name__ == "__main__":
-    pytest.main()
+    test_find_label_separation_3D_6_connectivity()
+    #pytest.main()
