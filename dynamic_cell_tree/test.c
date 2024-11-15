@@ -1,8 +1,6 @@
+#include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <stdbool.h>
-#include <unistd.h>
-
 
 // Define a struct for a 3D vector
 typedef struct {
@@ -12,21 +10,19 @@ typedef struct {
 // Function to get neighbors based on connectivity
 void get_neighbors_3D(Vector3D *neighbors, int *neighbor_count, int connectivity) {
     if (connectivity == 6) {
-        // 6-connectivity neighbors
         *neighbor_count = 6;
-        neighbors[0] = (Vector3D) {1, 0, 0};
-        neighbors[1] = (Vector3D) {-1, 0, 0};
-        neighbors[2] = (Vector3D) {0, 1, 0};
-        neighbors[3] = (Vector3D) {0, -1, 0};
-        neighbors[4] = (Vector3D) {0, 0, 1};
-        neighbors[5] = (Vector3D) {0, 0, -1};
+        neighbors[0] = (Vector3D){1, 0, 0};
+        neighbors[1] = (Vector3D){-1, 0, 0};
+        neighbors[2] = (Vector3D){0, 1, 0};
+        neighbors[3] = (Vector3D){0, -1, 0};
+        neighbors[4] = (Vector3D){0, 0, 1};
+        neighbors[5] = (Vector3D){0, 0, -1};
     } else if (connectivity == 18) {
-        // Add 18-connectivity logic here if needed
+        // Add 18-connectivity logic if needed
     }
     // Add more cases if necessary
 }
 
-// A helper function to perform DFS on the vector field
 int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim, 
                            int target_x, int target_y, int target_z, 
                            int *vector_field, int label, int cutoff, int connectivity) {
@@ -34,7 +30,7 @@ int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim,
     Vector3D stack[1000];  // Adjust stack size if necessary
     bool *visited = calloc(x_dim * y_dim * z_dim, sizeof(bool));
     if (!visited) {
-        fprintf( "Memory allocation failed for visited array\n");
+        fprintf(stderr, "Memory allocation failed for visited array\n");
         exit(EXIT_FAILURE);
     }
 
@@ -96,7 +92,7 @@ int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim,
 }
 
 // Main function to find separation times between labels
-void find_label_separation_3D(int *labels, int *vector_field, int x_dim, int y_dim, int z_dim, 
+void find_label_separation_3D(int *labels, int *vector_field, int x_dim, int y_dim, int z_dim,
                               int cutoff, int connectivity, int *separation_times) {
     Vector3D neighbors[26];
     int neighbor_count;
@@ -109,7 +105,6 @@ void find_label_separation_3D(int *labels, int *vector_field, int x_dim, int y_d
                 int current_label = labels[idx];
                 if (current_label == 0) continue;
 
-                // Iterate over neighbors
                 for (int n = 0; n < neighbor_count; n++) {
                     int nx = x + neighbors[n].x;
                     int ny = y + neighbors[n].y;
@@ -119,13 +114,11 @@ void find_label_separation_3D(int *labels, int *vector_field, int x_dim, int y_d
                         int neighbor_label = labels[nidx];
 
                         if (neighbor_label != 0 && neighbor_label != current_label) {
-                            // Compute progenitor chain lengths
                             int s1 = compute_progenitors_3D(labels, x_dim, y_dim, z_dim, x, y, z, vector_field, current_label, cutoff, connectivity);
                             int s2 = compute_progenitors_3D(labels, x_dim, y_dim, z_dim, nx, ny, nz, vector_field, neighbor_label, cutoff, connectivity);
                             int separation_time = (s1 < s2) ? s1 : s2;
 
-                            // Store separation time
-                            int key = current_label * 1000 + neighbor_label;  // Simple hash for label pairs
+                            int key = current_label * 1000 + neighbor_label;  // Simple hash
                             if (separation_times[key] < separation_time) {
                                 separation_times[key] = separation_time;
                             }
@@ -135,4 +128,51 @@ void find_label_separation_3D(int *labels, int *vector_field, int x_dim, int y_d
             }
         }
     }
+}
+
+// Test function in the main program
+int main() {
+    const int x_dim = 5, y_dim = 3, z_dim = 2;
+    int labels[] = {
+        1, 1, 1, 2, 2,
+        1, 1, 0, 2, 2,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0
+    };
+
+    int *vector_field = calloc(3 * x_dim * y_dim * z_dim, sizeof(int));
+    if (!vector_field) {
+        fprintf(stderr, "Memory allocation failed\n");
+        return 1;
+    }
+
+    // Initialize vector_field if needed
+    for (int i = 0; i < 3 * x_dim * y_dim * z_dim; i++) {
+        vector_field[i] = 0;
+    }
+
+    
+    int cutoff = 10;
+    int connectivity = 6;
+    int *separation_times = calloc(1000 * 1000, sizeof(int));
+    if (!separation_times) {
+        fprintf(stderr, "Memory allocation for separation_times failed\n");
+        return 1;
+    }
+
+    find_label_separation_3D(labels, vector_field, x_dim, y_dim, z_dim, cutoff, connectivity, separation_times);
+
+    for (int i = 0; i < 1000; i++) {
+        for (int j = i + 1; j < 1000; j++) {
+            int key = i * 1000 + j;
+            if (separation_times[key] > 0) {
+                printf("Labels (%d, %d): Separation Time = %d\n", i, j, separation_times[key]);
+            }
+        }
+    }
+
+    free(separation_times);
+    return 0;
 }
