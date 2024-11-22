@@ -226,7 +226,7 @@ lib = ctypes.CDLL(lib_path)
 # Define argument and return types
 lib.find_label_separation_3D.argtypes = [
     ctypes.POINTER(ctypes.c_int),  # labels (flat array)
-    ctypes.POINTER(ctypes.c_int),  # vector_field (flat array)
+    ctypes.POINTER(ctypes.c_float),  # vector_field (flat array)
     ctypes.c_int, ctypes.c_int, ctypes.c_int,  # x_dim, y_dim, z_dim
     ctypes.c_int, ctypes.c_int,               # cutoff, connectivity
     ctypes.POINTER(ctypes.c_int)              # separation_times (flat array)
@@ -237,13 +237,13 @@ def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
 
     # Flatten arrays and create ctypes pointers
     flat_labels = labels.ravel().astype(np.int32)
-    flat_vector_field = vector_field.ravel().astype(np.int32)
+    flat_vector_field = vector_field.ravel().astype(np.float32)
     separation_times = np.zeros(1000 * 1000, dtype=np.int32)  # Pre-allocate for simplicity
 
     # Call the C function
     lib.find_label_separation_3D(
         flat_labels.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
-        flat_vector_field.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
+        flat_vector_field.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
         x_dim, y_dim, z_dim,
         cutoff, connectivity,
         separation_times.ctypes.data_as(ctypes.POINTER(ctypes.c_int))

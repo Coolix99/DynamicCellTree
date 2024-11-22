@@ -186,5 +186,5 @@ def test_find_label_separation_3D_no_overlap():
 
 # Optional main function to run tests manually
 if __name__ == "__main__":
-    test_find_label_separation_3D_6_connectivity()
-    #pytest.main()
+    #test_find_label_separation_3D_6_connectivity()
+    pytest.main()
