@@ -140,8 +140,11 @@ def test_find_label_separation_3D_18_connectivity():
     vector_field = np.zeros((3, 2, 3, 5), dtype=np.float32)
 
     # Set vector directions to simulate 18-connectivity overlap
-    vector_field[:, 0, 0, 2] = [1, 0, -1]  # Label 1 pointing towards Label 2
-    vector_field[:, 0, 0, 3] = [1, 0, 1]   # Label 2 pointing towards Label 1
+    vector_field[:, 0, 0, 2] = [1, 0, -1]  
+    vector_field[:, 0, 0, 1] = [1, 0, -1] 
+    vector_field[:, 0, 0, 3] = [1, 0, 1]  
+    vector_field[:, 0, 0, 4] = [1, 0, 1]   
+    vector_field[:, 0, 1, 3] = [1, 0, 1]   # Label 2 pointing towards Label 1
 
     # Expected separation times between labels
     expected_separation = {
@@ -186,5 +189,5 @@ def test_find_label_separation_3D_no_overlap():
 
 # Optional main function to run tests manually
 if __name__ == "__main__":
-    #test_find_label_separation_3D_6_connectivity()
+    #test_find_label_separation_3D_no_overlap()
     pytest.main()

@@ -241,6 +241,9 @@ def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
     separation_times = np.zeros(1000 * 1000, dtype=np.int32)  # Pre-allocate for simplicity
 
     # Call the C function
+    print(flat_labels)
+    print(flat_vector_field)
+    print(x_dim, y_dim, z_dim)
     lib.find_label_separation_3D(
         flat_labels.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         flat_vector_field.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
@@ -248,7 +251,7 @@ def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
         cutoff, connectivity,
         separation_times.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
     )
-
+    print(np.max(separation_times))
     separation_dict = {}
     for i in range(1000):
         for j in range(i + 1, 1000):  # Only need upper triangular part for unique pairs
