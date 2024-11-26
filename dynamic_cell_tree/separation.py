@@ -219,6 +219,20 @@ import ctypes
 import numpy as np
 import os
 
+class SeparationEntry(ctypes.Structure):
+    _fields_ = [
+        ("label1", ctypes.c_int),
+        ("label2", ctypes.c_int),
+        ("separation_time", ctypes.c_int)
+    ]
+
+class SparseMap(ctypes.Structure):
+    _fields_ = [
+        ("entries", ctypes.POINTER(SeparationEntry)),  # Pointer to array of entries
+        ("count", ctypes.c_size_t),                   # Number of entries
+        ("capacity", ctypes.c_size_t)                 # Allocated capacity
+    ]
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 lib_path = os.path.join(current_dir, 'libseparation.so')
 lib = ctypes.CDLL(lib_path)
@@ -227,35 +241,34 @@ lib = ctypes.CDLL(lib_path)
 lib.find_label_separation_3D.argtypes = [
     ctypes.POINTER(ctypes.c_int),  # labels (flat array)
     ctypes.POINTER(ctypes.c_float),  # vector_field (flat array)
-    ctypes.c_int, ctypes.c_int, ctypes.c_int,  # x_dim, y_dim, z_dim
-    ctypes.c_int, ctypes.c_int,               # cutoff, connectivity
-    ctypes.POINTER(ctypes.c_int)              # separation_times (flat array)
+    ctypes.c_int, ctypes.c_int, ctypes.c_int,  # dim1, dim2, dim3
+    ctypes.c_int, ctypes.c_int,  # cutoff, connectivity
 ]
+lib.find_label_separation_3D.restype = SparseMap
+
+lib.free_sparse_map_memory.argtypes = [ctypes.POINTER(SparseMap)]
+lib.free_sparse_map_memory.restype = None
 
 def find_label_separation_3D(labels, vector_field, cutoff=30, connectivity=6):
-    x_dim, y_dim, z_dim = labels.shape
+    dim3, dim2, dim1 = labels.shape
 
     # Flatten arrays and create ctypes pointers
     flat_labels = labels.ravel().astype(np.int32)
     flat_vector_field = vector_field.ravel().astype(np.float32)
-    separation_times = np.zeros(1000 * 1000, dtype=np.int32)  # Pre-allocate for simplicity
-
-    # Call the C function
-    print(flat_labels)
-    print(flat_vector_field)
-    print(x_dim, y_dim, z_dim)
-    lib.find_label_separation_3D(
+    
+    sparse_map = lib.find_label_separation_3D(
         flat_labels.ctypes.data_as(ctypes.POINTER(ctypes.c_int)),
         flat_vector_field.ctypes.data_as(ctypes.POINTER(ctypes.c_float)),
-        x_dim, y_dim, z_dim,
-        cutoff, connectivity,
-        separation_times.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
+        dim1, dim2, dim3,
+        cutoff, connectivity
     )
-    print(np.max(separation_times))
+
+    # Process the entries in the SparseMap
     separation_dict = {}
-    for i in range(1000):
-        for j in range(i + 1, 1000):  # Only need upper triangular part for unique pairs
-            if separation_times[i * 1000 + j] > 0:
-                separation_dict[(i, j)] = separation_times[i * 1000 + j]
+    for i in range(sparse_map.count):
+        entry = sparse_map.entries[i]
+        separation_dict[(entry.label1, entry.label2)] = entry.separation_time
+
+    lib.free_sparse_map_memory(ctypes.byref(sparse_map))
 
     return separation_dict

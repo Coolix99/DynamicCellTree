@@ -185,6 +185,7 @@ def test_find_label_separation_3D_no_overlap():
 
     # Run the function
     separation_times = find_label_separation_3D(labels, vector_field, cutoff=10, connectivity=6)
+    print(separation_times)
     assert separation_times == expected_separation, f"Expected {expected_separation}, but got {separation_times}"
 
 # Optional main function to run tests manually

@@ -3,9 +3,11 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "sparse_map.h"
+
 // Define a struct for a 3D vector
 typedef struct {
-    int x, y, z;
+    int x1, x2, x3;
 } Vector3D;
 
 // Function to get neighbors based on connectivity
@@ -41,33 +43,32 @@ void get_neighbors_3D_18(Vector3D *neighbors) {
     neighbors[17] = (Vector3D){0, -1, -1};
 }
 
-
 // Convert vector field values to a directional step for 6-connectivity
-Vector3D convert_to_direction_6(float vx, float vy, float vz) {
-    int abs_vx = abs(vx);
-    int abs_vy = abs(vy);
-    int abs_vz = abs(vz);
+Vector3D convert_to_direction_6(float v1, float v2, float v3) {
+    int abs_v1 = abs(v1);
+    int abs_v2 = abs(v2);
+    int abs_v3 = abs(v3);
 
-    if (abs_vx >= abs_vy && abs_vx >= abs_vz) {
-        return (Vector3D){(vx > 0 ? 1 : -1), 0, 0};
-    } else if (abs_vy >= abs_vx && abs_vy >= abs_vz) {
-        return (Vector3D){0, (vy > 0 ? 1 : -1), 0};
+    if (abs_v1 >= abs_v2 && abs_v1 >= abs_v3) {
+        return (Vector3D){(v1 > 0 ? 1 : -1), 0, 0};
+    } else if (abs_v2 >= abs_v1 && abs_v2 >= abs_v3) {
+        return (Vector3D){0, (v2 > 0 ? 1 : -1), 0};
     } else {
-        return (Vector3D){0, 0, (vz > 0 ? 1 : -1)};
+        return (Vector3D){0, 0, (v3 > 0 ? 1 : -1)};
     }
 }
 
 // Convert vector field values to a directional step for 18-connectivity
-Vector3D convert_to_direction_18(float vx, float vy, float vz) {
-    float v1 = vx;
-    float v2 = (vx + vy) / 1.4142135f;
-    float v3 = vy;
-    float v4 = (vx - vy) / 1.4142135f;
-    float v5 = (vx + vz) / 1.4142135f;
-    float v6 = (vy + vz) / 1.4142135f;
-    float v7 = vz;
-    float v8 = (vx - vz) / 1.4142135f;
-    float v9 = (vy - vz) / 1.4142135f;
+Vector3D convert_to_direction_18(float v_1, float v_2, float v_3) {
+    float v1 = v_1;
+    float v2 = (v_1 + v_2) / 1.4142135f;
+    float v3 = v_2;
+    float v4 = (v_1 - v_2) / 1.4142135f;
+    float v5 = (v_1 + v_3) / 1.4142135f;
+    float v6 = (v_2 + v_3) / 1.4142135f;
+    float v7 = v_3;
+    float v8 = (v_1 - v_3) / 1.4142135f;
+    float v9 = (v_2 - v_3) / 1.4142135f;
 
     float max_val = fabsf(v1);
     Vector3D direction = (Vector3D){(v1 > 0 ? 1 : -1), 0, 0};
@@ -107,11 +108,11 @@ Vector3D convert_to_direction_18(float vx, float vy, float vz) {
     return direction;
 }
 
-int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim, 
-                           int target_x, int target_y, int target_z, 
+int compute_progenitors_3D(int *labels, int dim1, int dim2, int dim3, 
+                           int target_1, int target_2, int target_3, 
                            float *vector_field, int label, int cutoff, int connectivity) {
     Vector3D stack[1000];  // Adjust stack size if necessary
-    bool *visited = calloc(x_dim * y_dim * z_dim, sizeof(bool));
+    bool *visited = calloc(dim1 * dim2 * dim3, sizeof(bool));
     if (!visited) {
         fprintf(stderr, "Memory allocation failed for visited array\n");
         exit(EXIT_FAILURE);
@@ -142,7 +143,7 @@ int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim,
     }
 
     int depth = 0, stack_size = 1;
-    stack[0] = (Vector3D){target_x, target_y, target_z};
+    stack[0] = (Vector3D){target_1, target_2, target_3};
 
     Vector3D neighbors[connectivity];
     get_neighbors_3D(neighbors);
@@ -153,30 +154,30 @@ int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim,
 
         for (int i = 0; i < current_size; i++) {
             Vector3D pos = stack[i];
-            int idx = pos.z * x_dim * y_dim + pos.y * x_dim + pos.x;
+            int idx = pos.x3 * dim1 * dim2 + pos.x2 * dim1 + pos.x1;
 
             if (visited[idx]) continue;
             visited[idx] = true;
 
             for (int j = 0; j < connectivity; j++) {
                 Vector3D neighbor = {
-                    pos.x + neighbors[j].x,
-                    pos.y + neighbors[j].y,
-                    pos.z + neighbors[j].z
+                    pos.x1 + neighbors[j].x1,
+                    pos.x2 + neighbors[j].x2,
+                    pos.x3 + neighbors[j].x3
                 };
 
-                int nx = neighbor.x, ny = neighbor.y, nz = neighbor.z;
-                if (nx >= 0 && nx < x_dim && ny >= 0 && ny < y_dim && nz >= 0 && nz < z_dim) {
-                    int nidx = nz * x_dim * y_dim + ny * x_dim + nx;
+                int n1 = neighbor.x1, n2 = neighbor.x2, n3 = neighbor.x3;
+                if (n1 >= 0 && n1 < dim1 && n2 >= 0 && n2 < dim2 && n3 >= 0 && n3 < dim3) {
+                    int nidx = n3 * dim1 * dim2 + n2 * dim1 + n1;
 
                     if (labels[nidx] == label && !visited[nidx]) {
-                        float vx = vector_field[0 * x_dim * y_dim * z_dim + nidx];
-                        float vy = vector_field[1 * x_dim * y_dim * z_dim + nidx];
-                        float vz = vector_field[2 * x_dim * y_dim * z_dim + nidx];
+                        float v1 = vector_field[0 * dim1 * dim2 * dim3 + nidx];
+                        float v2 = vector_field[1 * dim1 * dim2 * dim3 + nidx];
+                        float v3 = vector_field[2 * dim1 * dim2 * dim3 + nidx];
 
-                        Vector3D direction = convert_to_direction(vx, vy, vz);
+                        Vector3D direction = convert_to_direction(v1, v2, v3);
 
-                        if (nx + direction.x == pos.x && ny + direction.y == pos.y && nz + direction.z == pos.z) {
+                        if (n1 + direction.x1 == pos.x1 && n2 + direction.x2 == pos.x2 && n3 + direction.x3 == pos.x3) {
                             stack[stack_size++] = neighbor;
                         }
                     }
@@ -191,11 +192,14 @@ int compute_progenitors_3D(int *labels, int x_dim, int y_dim, int z_dim,
 }
 
 // Main function to find separation times between labels
-void find_label_separation_3D(int *labels, float *vector_field, int x_dim, int y_dim, int z_dim,
-                              int cutoff, int connectivity, int *separation_times) {
+SparseMap find_label_separation_3D(int *labels, float *vector_field, int dim1, int dim2, int dim3,
+                            int cutoff, int connectivity){
+    SparseMap sparse_map;
+    init_sparse_map(&sparse_map, 10);  
+                            
     Vector3D neighbors[connectivity];
+    
     // Predefine the direction function
-
     void (*get_neighbors_3D)(Vector3D*);
     if (connectivity == 6) {
         get_neighbors_3D = &get_neighbors_3D_6;
@@ -203,38 +207,44 @@ void find_label_separation_3D(int *labels, float *vector_field, int x_dim, int y
         get_neighbors_3D = &get_neighbors_3D_18;
     } else {
         fprintf(stderr, "Unsupported connectivity\n");
+        return sparse_map;
     }
 
     get_neighbors_3D(neighbors);
 
-    for (int x = 0; x < x_dim; x++) {
-        for (int y = 0; y < y_dim; y++) {
-            for (int z = 0; z < z_dim; z++) {
-                int idx = z * x_dim * y_dim + y * x_dim + x;
+    // Iterate over each voxel in the 3D grid
+    for (int x1 = 0; x1 < dim1; x1++) {
+        for (int x2 = 0; x2 < dim2; x2++) {
+            for (int x3 = 0; x3 < dim3; x3++) {
+                int idx = x3 * dim1 * dim2 + x2 * dim1 + x1;
                 int current_label = labels[idx];
-                if (current_label == 0) continue;
+                if (current_label == 0) continue;  // Skip unlabeled voxels
 
+                // Iterate over neighbors
                 for (int n = 0; n < connectivity; n++) {
-                    int nx = x + neighbors[n].x;
-                    int ny = y + neighbors[n].y;
-                    int nz = z + neighbors[n].z;
-                    if (nx >= 0 && nx < x_dim && ny >= 0 && ny < y_dim && nz >= 0 && nz < z_dim) {
-                        int nidx = nz * x_dim * y_dim + ny * x_dim + nx;
+                    int n1 = x1 + neighbors[n].x1;
+                    int n2 = x2 + neighbors[n].x2;
+                    int n3 = x3 + neighbors[n].x3;
+
+                    // Check if neighbor is within bounds
+                    if (n1 >= 0 && n1 < dim1 && n2 >= 0 && n2 < dim2 && n3 >= 0 && n3 < dim3) {
+                        int nidx = n3 * dim1 * dim2 + n2 * dim1 + n1;
                         int neighbor_label = labels[nidx];
 
+                        // Skip if neighbor has the same label or is unlabeled
                         if (neighbor_label != 0 && neighbor_label != current_label) {
-                            int s1 = compute_progenitors_3D(labels, x_dim, y_dim, z_dim, x, y, z, vector_field, current_label, cutoff, connectivity);
-                            int s2 = compute_progenitors_3D(labels, x_dim, y_dim, z_dim, nx, ny, nz, vector_field, neighbor_label, cutoff, connectivity);
+                            // Compute progenitor separation times
+                            int s1 = compute_progenitors_3D(labels, dim1, dim2, dim3, x1, x2, x3, vector_field, current_label, cutoff, connectivity);
+                            int s2 = compute_progenitors_3D(labels, dim1, dim2, dim3, n1, n2, n3, vector_field, neighbor_label, cutoff, connectivity);
                             int separation_time = (s1 < s2) ? s1 : s2;
 
-                            int key = current_label * 1000 + neighbor_label;  // Simple hash
-                            if (separation_times[key] < separation_time) {
-                                separation_times[key] = separation_time;
-                            }
+                            // Update the sparse map
+                            add_or_update_sparse_map(&sparse_map, current_label, neighbor_label, separation_time);
                         }
                     }
                 }
             }
         }
     }
+    return sparse_map;
 }
