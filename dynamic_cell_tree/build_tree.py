@@ -100,5 +100,5 @@ def build_trees_from_splits(splits):
         roots = [root for root in roots if root in connections]
 
         return dict(connections), roots
-    print(qebt.QBT_parent)
+    #print(qebt.QBT_parent)
     return construct_forest()

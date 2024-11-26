@@ -149,6 +149,7 @@ int compute_progenitors_3D(int *labels, int dim1, int dim2, int dim3,
     get_neighbors_3D(neighbors);
 
     while (stack_size > 0 && depth < cutoff) {
+        //todo check stack overflow
         int current_size = stack_size;
         stack_size = 0;
 
@@ -156,7 +157,7 @@ int compute_progenitors_3D(int *labels, int dim1, int dim2, int dim3,
             Vector3D pos = stack[i];
             int idx = pos.x3 * dim1 * dim2 + pos.x2 * dim1 + pos.x1;
 
-            if (visited[idx]) continue;
+            if (visited[idx]) continue; //todo: check wheter cutof makes more sense
             visited[idx] = true;
 
             for (int j = 0; j < connectivity; j++) {

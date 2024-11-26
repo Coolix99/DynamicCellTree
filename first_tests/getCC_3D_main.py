@@ -83,7 +83,8 @@ def generate_example_data_3D():
     factor = tuple(m / n for m, n in zip(mask.shape, nuclei.shape))
     nuclei=cle.resample(nuclei, factor_x=factor[2], factor_y=factor[1], factor_z=factor[0])
 
-    return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
+    return mask,flow,nuclei
+    return mask[:400,200:800,200:800],flow[:,:400,200:800,200:800],nuclei[:400,200:800,200:800]
 
 def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
     """
@@ -120,7 +121,7 @@ def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
     viewer.add_image(mask, name="Binary Mask", colormap="gray", opacity=0.5)
 
     # Add the vector field as a vectors layer
-    viewer.add_vectors(vector_data, edge_color="blue", name="Vector Field")
+    #viewer.add_vectors(vector_data, edge_color="blue", name="Vector Field")
 
     # Add connected components as a labels layer
     if labels is not None:
@@ -181,17 +182,17 @@ def main():
 
     # Find label separation
     start_time = time.time()
-    splits = find_label_separation_3D(labels, vector_field, cutoff=20, connectivity=6) #change back if implemented
+    splits = find_label_separation_3D(labels, vector_field, cutoff=20, connectivity=18) #change back if implemented
     print(f"Finding label separation took {time.time() - start_time:.2f} seconds.")
     
-    print("Splits:", splits)
+    #print("Splits:", splits)
 
     # Build trees from splits
     start_time = time.time()
     tree = build_trees_from_splits(splits)
     print(f"Building trees from splits took {time.time() - start_time:.2f} seconds.")
     
-    print("Tree structure:", tree)
+    #print("Tree structure:", tree)
 
     # Display final results
     show_results_napari(mask, vector_field, nuclei, labels)
