@@ -31,62 +31,6 @@ def load_compressed_array(filename):
     
     return array
 
-def get_JSON(dir,name=None):
-    if name is None:
-        name='MetaData.json'
-    else:
-        name = 'MetaData_'+name+'.json'
-    json_file_path=os.path.join(dir, name)
-    try:
-        with open(json_file_path, 'r') as json_file:
-            data = json.load(json_file)
-    except FileNotFoundError:
-        print("MetaData doesn't exist", dir, name)
-        data = {}  # Create an empty dictionary if the file doesn't exist
-    return data
-
-import tifffile
-def getImage(file):
-    with tifffile.TiffFile(file) as tif:
-            try:
-                image=tif.asarray()
-            except:
-                return None
-            
-            return image
-
-
-def generate_example_data_3D():
-
-    apply_folder='20220610_mAG-zGem_H2a-mcherry_78hpf_LM_A3_analyzed_nuclei'
-    print(apply_folder)
-    applyresult_folder_path=(r'/home/max/Documents/02_Data/test_data_Dyn/applyresult')
-    nuclei_folder_path=(r'/home/max/Documents/02_Data/test_data_Dyn/raw_images_nuclei')
-    #propresult_folder_path=(r'/media/max_kotz/random_data/propresult/{}').format("")
-    #prop_dir_path=os.path.join(propresult_folder_path,apply_folder)
-    apply_dir_path=os.path.join(applyresult_folder_path,apply_folder)
-
-    nuclei_dir_path=os.path.join(nuclei_folder_path,apply_folder)
-    
-    MetaData_apply=get_JSON(apply_dir_path)["apply_MetaData"]
-    flow_file=os.path.join(apply_dir_path,MetaData_apply['pred_flows file'])
-    mask_file=os.path.join(apply_dir_path,MetaData_apply['segmentation file'])
-
-    flow=load_compressed_array(flow_file)
-    mask=load_compressed_array(mask_file)
-
-    MetaData_nuclei=get_JSON(nuclei_dir_path)["nuclei_image_MetaData"]
-    nuclei_file=os.path.join(nuclei_dir_path,MetaData_nuclei['nuclei image file name'])
-    nuclei=getImage(nuclei_file)
-
-    factor = tuple(m / n for m, n in zip(mask.shape, nuclei.shape))
-    nuclei=cle.resample(nuclei, factor_x=factor[2], factor_y=factor[1], factor_z=factor[0])
-    
-    #np.save(r"/home/max/Documents/02_Data/test_data_Dyn/test_data/scaled_nuclei.npy", nuclei)
-
-    #return mask,flow,nuclei
-    return mask[200:400,200:800,200:800],flow[:,200:400,200:800,200:800],nuclei[200:400,200:800,200:800]
-
 def load_example_data_3D():
     applyresult_folder_path=(r'/home/max/Documents/02_Data/test_data_Dyn/test_data')
 
@@ -98,7 +42,7 @@ def load_example_data_3D():
 
     nuclei=np.load(os.path.join(applyresult_folder_path,'scaled_nuclei.npy'))
     return mask,flow,nuclei
-    return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
+    #return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
 
 
 def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
@@ -113,21 +57,21 @@ def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
         centers (dict, optional): Dictionary of label centers (label as key, (x, y, z) coordinates as value).
     """
     # Prepare the grid for starting points in 3D
-    X, Y, Z = np.meshgrid(
-        np.arange(mask.shape[0]), 
-        np.arange(mask.shape[1]), 
-        np.arange(mask.shape[2]), 
-        indexing='ij'
-    )
-    start_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T  # (N, 3) array of starting points
+    # X, Y, Z = np.meshgrid(
+    #     np.arange(mask.shape[0]), 
+    #     np.arange(mask.shape[1]), 
+    #     np.arange(mask.shape[2]), 
+    #     indexing='ij'
+    # )
+    # start_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T  # (N, 3) array of starting points
 
-    # Unpack vector components for 3D
-    U = vector_field[0].ravel()  # X-component
-    V = vector_field[1].ravel()  # Y-component
-    W = vector_field[2].ravel()  # Z-component
+    # # Unpack vector components for 3D
+    # U = vector_field[0].ravel()  # X-component
+    # V = vector_field[1].ravel()  # Y-component
+    # W = vector_field[2].ravel()  # Z-component
 
-    # Compute the end points by adding the vector directions to start points
-    vector_data = np.stack([start_points, np.vstack([U, V, W]).T], axis=1)  # Shape (N, 2, 3)
+    # # Compute the end points by adding the vector directions to start points
+    # vector_data = np.stack([start_points, np.vstack([U, V, W]).T], axis=1)  # Shape (N, 2, 3)
 
     # Open napari viewer
     viewer = napari.Viewer()
@@ -160,7 +104,7 @@ def main():
     start_time = time.time()
     mask, vector_field, nuclei = load_example_data_3D()
     print(f"Data load took {time.time() - start_time:.2f} seconds.")
-    
+
     print("Mask shape:", mask.shape)
     print("Vector field shape:", vector_field.shape)
     print("Nuclei shape:", nuclei.shape)
@@ -186,15 +130,14 @@ def main():
     centers = find_label_centers_3D(labels, vector_field, connectivity=18)
     print(f"Finding label centers took {time.time() - start_time:.2f} seconds.")
     print("Centers found.")
-
     #Merge close labels
     start_time = time.time()
     labels = merge_close_labels_3D(labels, centers, merge_distance=4)
     print(f"Merging close labels took {time.time() - start_time:.2f} seconds.")
     
     # Display results with napari
-    #show_results_napari(mask, vector_field, nuclei, labels,centers)
-
+    show_results_napari(mask, vector_field, nuclei, labels)
+    return
     # Find label separation
     start_time = time.time()
     splits = find_label_separation_3D(labels, vector_field, cutoff=20, connectivity=6) #change back if implemented
