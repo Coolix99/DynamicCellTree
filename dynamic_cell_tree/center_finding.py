@@ -71,7 +71,7 @@ def find_label_centers(labels, vector_field, distance_threshold=2, steps_check=5
     return centers
 
 @njit
-def find_label_centers_3D(labels, vector_field, distance_threshold=5, steps_check=10, connectivity=6):
+def find_label_centers_3D(labels, vector_field, distance_threshold=3, steps_check=7, connectivity=6, dt=0.3):
     """
     Finds the 'singular' center for each label in a 3D labeled array by following vector directions until the position gets stuck.
     
@@ -134,8 +134,15 @@ def find_label_centers_3D(labels, vector_field, distance_threshold=5, steps_chec
                         if total_distance < distance_threshold:
                             break
                 
+                refined_x, refined_y, refined_z = float(current_x), float(current_y), float(current_z)
+                for i in range(20):
+                    int_x, int_y, int_z = int(refined_x + 0.5), int(refined_y + 0.5), int(refined_z + 0.5)
+                    vx, vy, vz = vector_field[0, int_x, int_y, int_z], vector_field[1, int_x, int_y, int_z], vector_field[2, int_x, int_y, int_z]
+                    dx, dy, dz = dt * vx, dt * vy, dt * vz
+                    refined_x, refined_y, refined_z = refined_x + dx, refined_y + dy, refined_z + dz
+
                 # Record the center of the label
-                centers[current_label] = (current_x, current_y, current_z)
+                centers[current_label] = (refined_x, refined_y, refined_z)
                 visited.add(current_label)
 
     return centers

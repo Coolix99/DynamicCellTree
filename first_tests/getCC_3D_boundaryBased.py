@@ -41,8 +41,11 @@ def load_example_data_3D():
     mask=load_compressed_array(mask_file)
 
     nuclei=np.load(os.path.join(applyresult_folder_path,'scaled_nuclei.npy'))
-    return mask,flow,nuclei
-    #return mask[300:400,200:800,200:800],flow[:,300:400,200:800,200:800],nuclei[300:400,200:800,200:800]
+    #return mask,flow,nuclei
+    #return mask[100:200,350:800,350:800],flow[:,100:200,350:800,350:800],nuclei[100:200,350:800,350:800]
+    #return mask[100:200,600:800,600:800],flow[:,100:200,600:800,600:800],nuclei[100:200,600:800,600:800]
+    return mask[120:200,600:650,600:650],flow[:,120:200,600:650,600:650],nuclei[120:200,600:650,600:650]
+
 
 
 def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
@@ -56,22 +59,7 @@ def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
         labels (np.ndarray, optional): Labeled connected components to display.
         centers (dict, optional): Dictionary of label centers (label as key, (x, y, z) coordinates as value).
     """
-    # Prepare the grid for starting points in 3D
-    # X, Y, Z = np.meshgrid(
-    #     np.arange(mask.shape[0]), 
-    #     np.arange(mask.shape[1]), 
-    #     np.arange(mask.shape[2]), 
-    #     indexing='ij'
-    # )
-    # start_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T  # (N, 3) array of starting points
-
-    # # Unpack vector components for 3D
-    # U = vector_field[0].ravel()  # X-component
-    # V = vector_field[1].ravel()  # Y-component
-    # W = vector_field[2].ravel()  # Z-component
-
-    # # Compute the end points by adding the vector directions to start points
-    # vector_data = np.stack([start_points, np.vstack([U, V, W]).T], axis=1)  # Shape (N, 2, 3)
+   
 
     # Open napari viewer
     viewer = napari.Viewer()
@@ -79,15 +67,32 @@ def show_results_napari(mask, vector_field, nuclei, labels=None, centers=None):
     # Add the binary mask as an image layer
     viewer.add_image(mask, name="Binary Mask", colormap="gray", opacity=0.5)
 
-    # Add the vector field as a vectors layer
-    #viewer.add_vectors(vector_data, edge_color="blue", name="Vector Field")
+    # Add nuclei layer
+    viewer.add_image(nuclei, name="Nuclei")
+
+    if vector_field is not None:
+        # Prepare the grid for starting points in 3D
+        X, Y, Z = np.meshgrid(
+            np.arange(mask.shape[0]), 
+            np.arange(mask.shape[1]), 
+            np.arange(mask.shape[2]), 
+            indexing='ij'
+        )
+        start_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T  # (N, 3) array of starting points
+
+        # Unpack vector components for 3D
+        U = vector_field[0].ravel()  # X-component
+        V = vector_field[1].ravel()  # Y-component
+        W = vector_field[2].ravel()  # Z-component
+
+        # Compute the end points by adding the vector directions to start points
+        vector_data = np.stack([start_points, np.vstack([U, V, W]).T], axis=1)  # Shape (N, 2, 3)
+        # Add the vector field as a vectors layer
+        viewer.add_vectors(vector_data, edge_color="blue", name="Vector Field")
 
     # Add connected components as a labels layer
     if labels is not None:
         viewer.add_labels(labels, name="Connected Components")
-
-    # Add nuclei layer
-    viewer.add_image(nuclei, name="Nuclei")
 
     # Add label centers as a points layer if centers are provided
     if centers is not None:
@@ -130,13 +135,15 @@ def main():
     centers = find_label_centers_3D(labels, vector_field, connectivity=18)
     print(f"Finding label centers took {time.time() - start_time:.2f} seconds.")
     print("Centers found.")
+    #print(centers)
+    
     #Merge close labels
     start_time = time.time()
     labels = merge_close_labels_3D(labels, centers, merge_distance=4)
     print(f"Merging close labels took {time.time() - start_time:.2f} seconds.")
     
     # Display results with napari
-    show_results_napari(mask, vector_field, nuclei, labels)
+    show_results_napari(mask, vector_field, nuclei, labels,centers=centers)
     return
     # Find label separation
     start_time = time.time()
